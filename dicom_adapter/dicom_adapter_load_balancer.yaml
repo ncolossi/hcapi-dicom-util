@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dicom-adapter-import-load-balancer
+  # The "Internal" annotation will result in an load balancer that can only
+  # be accessed from within the VPC the Kubernetes cluster is in.
+  # You can remove this annotation to get an externally accessible load balancer.
+  annotations:
+    cloud.google.com/load-balancer-type: "Internal"
+spec:
+  ports:
+  - port: 2575
+    targetPort: 2575
+    protocol: TCP
+    name: port
+  selector:
+    app: dicom-adapter-import
+  type: LoadBalancer

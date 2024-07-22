@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: dicom-adapter-export
+  name: dicom-adapter-export
+spec:
+  progressDeadlineSeconds: 2147483647
+  replicas: 1
+  revisionHistoryLimit: 2147483647
+  selector:
+    matchLabels:
+      app: dicom-adapter-export
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: dicom-adapter-export
+    spec:
+      containers:
+      - args:
+        - --peer_dimse_aet=IMPORTADAPTER
+        - --peer_dimse_ip=
+        - --peer_dimse_port=2575
+        - --project_id=
+        - --subscription_id=
+        - --dicomweb_addr=https://healthcare.googleapis.com/v1/projects/PROJECT/locations/REGION/datasets/DATASET/dicomStores/STORE/dicomWeb
+        - --oauth_scopes=https://www.googleapis.com/auth/pubsub
+        image: gcr.io/cloud-healthcare-containers/healthcare-api-dicom-dicomweb-adapter-export:0.2.29
+        imagePullPolicy: IfNotPresent
+        name: dicom-export-adapter
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status: {}
