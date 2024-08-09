@@ -1,0 +1,7 @@
+[
+	{
+		"name": "DEVICE_A", 
+		"host": "localhost", 
+		"port": 11112
+	}
+]

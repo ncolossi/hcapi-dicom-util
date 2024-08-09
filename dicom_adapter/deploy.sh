@@ -3,6 +3,8 @@
 # Run commands manually, after validating each yaml file
 #
 
+# AET dictionary
+kubectl create configmap aet-dictionary --from-file=AETs.json
 
 # Import adapter deploy
 kubectl apply -f dicom_adapter_import.yaml

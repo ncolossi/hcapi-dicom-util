@@ -35,6 +35,12 @@ spec:
         - containerPort: 2575
           name: port
           protocol: TCP
+        env:
+        - name: ENV_AETS_JSON
+          valueFrom:
+            configMapKeyRef:
+              name: aet-dictionary
+              key: AETs.json
         resources: {}
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
