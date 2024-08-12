@@ -2,3 +2,5 @@
 kubectl*
 *_old*
 *-local.*
+__pycache__
+.vscode

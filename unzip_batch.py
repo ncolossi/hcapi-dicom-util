@@ -10,6 +10,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Provides functionality to unzip batches of files in Google Cloud Storage (GCS).
+
+This script defines functions to unzip zip files located in a GCS bucket. 
+It supports parallel unzipping for faster processing of large batches.
+"""
+
 from google.cloud import storage
 import zipfile
 from io import BytesIO
@@ -18,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 
 INCLUDE_ZIP_NAME = True  # Add the file name (without .zip) as a folder to the unzipped files
-NUM_THREADS = 4          # Define the number of threads
+NUM_THREADS = 12         # Define the number of threads
 
 def unzip_and_upload_single(blob, bucket):
     """Unzips a single zip file, uploads contents, and deletes the original.
