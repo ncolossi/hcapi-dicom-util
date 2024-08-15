@@ -182,7 +182,7 @@ def compare_csv_reports(gcs_uri_csv1: str, gcs_uri_csv2: str) -> bool:
         else:
             print("Differences found in the CSV reports:")
             # Sort the differences by StudyInstanceUID and Source
-            print(diff.sort_values(by=['StudyInstanceUID', 'Source']).to_string())
+            print(diff.sort_values(by=['studyinstanceuid', 'Source']).to_string())
             return False
 
     except Exception as e:
