@@ -78,9 +78,9 @@ def export_dicom_metadata_to_csv(
         results = query_job.result()
 
         # Write results to a CSV string
-        csv_data = "StudyDate,StudyInstanceUID,AccessionNumber,PatientID,ObjectCount\n"
+        csv_data = "studyinstanceuid,accessionnumber,patientid,objectcount,stddate\n"
         for row in results:
-            csv_data += f"{row.StudyDate},{row.StudyInstanceUID},{row.AccessionNumber if row.AccessionNumber else ''},{row.PatientID if row.PatientID else ''},{row.ObjectCount}\n"
+            csv_data += f"{row.StudyInstanceUID},{row.AccessionNumber if row.AccessionNumber else ''},{row.PatientID if row.PatientID else ''},{row.ObjectCount},{row.StudyDate}\n"
 
         # Determine bucket_name and blob_name
         parts = gcs_uri_csv.replace("gs://", "").split("/", 1)
