@@ -50,7 +50,7 @@ def export_dicom_metadata_to_csv(
 
     print(f"Generating report from BigQuery for StudyDate: {date_str}...")
     try:
-        # Construct BigQuery client and query
+        # Construct BigQuery client and query (make sure query ignores deleted instances from streaming table)
         bq_client = bigquery.Client()
         query = f"""
             SELECT
@@ -59,10 +59,21 @@ def export_dicom_metadata_to_csv(
                 AccessionNumber,
                 PatientID,
                 COUNT(*) AS ObjectCount
-            FROM
-                `{bigquery_table_id}`
+            FROM (
+                SELECT
+                    ROW_NUMBER() OVER (PARTITION BY StudyInstanceUID, SOPInstanceUID, SeriesInstanceUID ORDER BY lastUpdated DESC) AS _row_id,
+                    StudyDate,
+                    StudyInstanceUID,
+                    AccessionNumber,
+                    PatientID,
+                    Type
+                FROM
+                    `{bigquery_table_id}`
+                WHERE
+                    StudyDate = '{date_str}') AS r
             WHERE
-                StudyDate = '{date_str}'
+                r._row_id=1
+                AND r.Type<>'DELETE'
             GROUP BY
                 StudyDate,
                 StudyInstanceUID,
@@ -72,7 +83,7 @@ def export_dicom_metadata_to_csv(
                 StudyDate,
                 StudyInstanceUID
         """
-
+        
         # Execute the query
         query_job = bq_client.query(query)
         results = query_job.result()
@@ -189,6 +200,42 @@ def compare_csv_reports(gcs_uri_csv1: str, gcs_uri_csv2: str) -> bool:
         print(f"Error comparing CSV reports: {e}")
         return False
 
+def validate_dicom_batch(gcs_uri_csv: str, bigquery_table_id: str):
+    """
+    Main function to validate DICOM batch against a CSV report.
+
+    Args:
+        gcs_uri_csv: GCS URI of the CSV file to compare.
+        bigquery_table_id: BigQuery table ID in 'project.dataset.table' format.
+    """
+    # Check file extension
+    if not gcs_uri_csv.endswith(".csv"):
+        print("Error: GCS URI should end with .csv")
+        return False
+
+    # Extract date from GCS URI
+    try:
+        date_str = gcs_uri_csv.split("/")[-1].split("-")[0]
+        date_str = datetime.strptime(date_str, "%Y%m%d").strftime("%Y-%m-%d")
+    except (ValueError, IndexError):
+        print("Incorrect GCS URI format. It should be like: gs://your-bucket/path/YYYYMMDD-report.csv")
+        return False
+
+    # Generate report from BigQuery
+    gcs_uri_csv2 = gcs_uri_csv.replace(".csv", "-hcapi.csv")
+    if not export_dicom_metadata_to_csv(
+        date_str, bigquery_table_id, gcs_uri_csv2
+    ):
+        print("Error generating report from BigQuery. Exiting.")
+        return False
+
+    # Compare reports
+    if not compare_csv_reports(gcs_uri_csv, gcs_uri_csv2):
+        print("CSV reports have differences. Exiting.")
+        return False
+
+    print("Validation completed.")
+    return True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -205,30 +252,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # Check file extension
-    if not args.gcs_uri_csv.endswith(".csv"):
-        print("Error: GCS URI should end with .csv")
+    if not validate_dicom_batch(args.gcs_uri_csv, args.bigquery_table_id):
         exit(1)
-
-    # Extract date from GCS URI
-    try:
-        date_str = args.gcs_uri_csv.split("/")[-1].split("-")[0]
-        date_str = datetime.strptime(date_str, "%Y%m%d").strftime("%Y-%m-%d")
-    except (ValueError, IndexError):
-        print("Incorrect GCS URI format. It should be like: gs://your-bucket/path/YYYYMMDD-report.csv")
-        exit(1)
-
-    # Generate report from BigQuery
-    gcs_uri_csv2 = args.gcs_uri_csv.replace(".csv", "-hcapi.csv")
-    if not export_dicom_metadata_to_csv(
-        date_str, args.bigquery_table_id, gcs_uri_csv2
-    ):
-        print("Error generating report from BigQuery. Exiting.")
-        exit(1)
-
-    # Compare reports
-    if not compare_csv_reports(args.gcs_uri_csv, gcs_uri_csv2):
-        print("CSV reports have differences. Exiting.")
-        exit(1)
-
-    print("Validation completed.")

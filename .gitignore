@@ -1,6 +1,6 @@
 .venv
 kubectl*
 *_old*
-*-local.*
+*-local*
 __pycache__
 .vscode

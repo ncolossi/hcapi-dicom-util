@@ -1,0 +1,29 @@
+taskGroups:
+  - taskSpec:
+      runnables:
+        - container: 
+            imageUri: your-region-docker.pkg.dev/your-project/imaging/run-batch
+      environment:
+        variables:
+          REPORT_CSV_GCS_URI: gs://your-project/path/REPORT/20120323-report.csv
+          DICOM_STORE_PATH: projects/your-project/locations/your-region/datasets/healthcare/dicomStores/your-dicom-store
+          BIGQUERY_TABLE_ID: your-project.dicomTest.dicom
+          STORAGE_CLASS: STANDARD
+      computeResource:
+        cpuMilli: 2000
+        memoryMib: 7500
+    taskCount: 1
+    taskCountPerNode: 1
+allocationPolicy:
+  instances:
+  - policy:
+      machineType: n1-standard-2
+      provisioningModel: STANDARD
+  network:
+    networkInterfaces:
+    - network: global/networks/your-vpc-name
+      subnetwork: regions/your-region/subnetworks/your-subnet
+  serviceAccount:
+    email: 000000000000-compute@developer.gserviceaccount.com
+logsPolicy:
+  destination: CLOUD_LOGGING
