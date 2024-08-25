@@ -58,12 +58,13 @@ In order to create Workflows jobs and Scheduler jobs, you need the following per
 * **Artifact Registry Repository Administrator:** Grants access to manage a specific Artifact Registry repository, including packages and settings within that repository.
 * **Workflows Admin:** Grants access to create, manage, and execute Google Cloud Workflows workflows.
 * **Cloud Scheduler Admin:** Grants access to create, manage, and execute Cloud Scheduler jobs.
+* **Batch Jobs Editor:** Grants access to create, manage, and execute Cloud Batch jobs.
 
 ```bash
 export PROJECT_ID="your-project-id"
 export USER_EMAIL="your-user@your-company.com"
 for role in roles/artifactregistry.admin roles/artifactregistry.repoAdmin \
-            roles/workflows.admin roles/cloudscheduler.admin 
+            roles/workflows.admin roles/cloudscheduler.admin roles/batch.jobsEditor
 do
     gcloud projects add-iam-policy-binding $PROJECT_ID \
         --member="user:$USER_EMAIL" \
