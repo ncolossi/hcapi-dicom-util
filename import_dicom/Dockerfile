@@ -14,5 +14,5 @@ COPY *.py requirements.txt /app/
 RUN python3 -m venv .venv
 RUN . .venv/bin/activate && pip3 install --no-cache-dir -r requirements.txt
 
-# Set the entrypoint to run run_batch.py by default
-ENTRYPOINT ["/bin/sh", "-c", ". .venv/bin/activate && python3 run_batch.py"]
+# Set the entrypoint to run monitor_report.py by default
+ENTRYPOINT ["/bin/sh", "-c", ". .venv/bin/activate && python3 monitor_report.py"]

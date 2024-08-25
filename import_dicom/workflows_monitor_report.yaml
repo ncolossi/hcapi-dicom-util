@@ -1,0 +1,52 @@
+main:
+  params: [args]
+  steps:
+    - init:
+        assign:
+          - projectId: "your-project"
+          - region: "your-region"
+          - reportGcsUri: "gs://your-bucket/path/REPORT"
+          - dicomStorePath: "your-dicom-store-path"
+          - bigqueryTableId: "your-bigquery-table-id"
+          - storageClass: "ARCHIVE"
+          - networkName: "your-vpc"
+          - subnetworkName: "your-subnet-name"
+          - serviceAccount: "your-service-account-email"
+          - imageUri: ${region + "-docker.pkg.dev/" + projectId + "/imaging/monitor-report:latest"}
+          - jobId: ${"monitor-report-" + string(int(sys.now()))}
+    - createAndRunBatchJob:
+        call: googleapis.batch.v1.projects.locations.jobs.create
+        args:
+            parent: ${"projects/" + projectId + "/locations/" + region}
+            jobId: ${jobId}
+            body:
+              taskGroups:
+                - taskSpec:
+                    runnables:
+                      - container: 
+                          imageUri: ${imageUri}
+                    environment:
+                      variables:
+                        REPORT_GCS_URI: ${reportGcsUri}
+                        DICOM_STORE_PATH: ${dicomStorePath}
+                        BIGQUERY_TABLE_ID: ${bigqueryTableId}
+                        STORAGE_CLASS: ${storageClass}
+                    computeResource:
+                      cpuMilli: 2000
+                      memoryMib: 8000
+                  taskCount: 1
+                  taskCountPerNode: 1
+              allocationPolicy:
+                instances:
+                - policy:
+                    machineType: "n2-standard-2"
+                    provisioningModel: STANDARD
+                network:
+                  networkInterfaces:
+                  - network: ${"global/networks/" + networkName}
+                    subnetwork: ${"regions/" + region + "/subnetworks/" + subnetworkName}
+                serviceAccount:
+                  email: ${serviceAccount}
+              logsPolicy:
+                destination: CLOUD_LOGGING
+        result: createAndRunBatchJobResponse
