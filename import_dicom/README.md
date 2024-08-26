@@ -11,9 +11,18 @@ The primary goal of these scripts is to provide a robust and automated solution 
 
 This ensures data integrity and consistency during the import process.
 
-## Setup
 
-### 1. Python Virtual Environment
+## Running the Scripts
+
+### 1. Running DICOM Report Monitor on Schedule
+It is possible to run the DICOM Report Monitor on Google Cloud Batch on an hourly schedule. For detailed instructions, refer to the [DICOM Report Monitor Setup Guide](monitor_report.md).
+
+
+### 2. Running Individual Scripts
+
+#### 2.1. Setup environment
+
+**Create a Python Virtual Environment**
 
 It's recommended to use a Python virtual environment to manage dependencies:
 
@@ -22,7 +31,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2. Install Requirements
+**Install Python Packages**
 
 Install the required Python packages:
 
@@ -30,14 +39,8 @@ Install the required Python packages:
 pip install -r requirements.txt
 ```
 
-## Running the Scripts
 
-### 1. Running DICOM Report Monitor on Schedule
-It is possible to run the DICOM Report Monitor on Google Cloud Batch on an hourly schedule. For detailed instructions, refer to the [DICOM Report Monitor Setup Guide](monitor_report.md).
-
-### 2. Running Individual Scripts
-
-#### 2.1. `process_dicom_batch.py`
+#### 2.2. Running `process_dicom_batch.py`
 This script unzips DICOM files from Cloud Storage and imports them into a DICOM store.
 
 Usage:
@@ -50,7 +53,7 @@ Example:
 python process_dicom_batch.py gs://your-bucket/path/to/dicoms projects/.../dicomStores/... ARCHIVE
 ```
 
-#### 2.2. `validate_dicom_batch.py`
+#### 2.3. Running `validate_dicom_batch.py`
 This script compares a CSV report with data in a BigQuery table to validate imported DICOM metadata.
 
 Usage:
