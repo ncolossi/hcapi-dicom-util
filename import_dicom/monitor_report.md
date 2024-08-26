@@ -13,7 +13,9 @@ Enable the following Google Cloud APIs:
 - Google Cloud Batch API
 - Google Workflows API
 - Cloud Scheduler API
+
 You can enable these APIs through the Google Cloud Console or using the `gcloud` command-line tool:
+
 ```bash
 gcloud services enable batch.googleapis.com workflows.googleapis.com cloudscheduler.googleapis.com
 ```
