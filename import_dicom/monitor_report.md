@@ -52,7 +52,12 @@ do
 done
 ```
 
-### 4. Setup IAM Permissions for the user
+### 4. Running Batch Jobs using a Shared VPC
+
+If you want a job to run on a subnet of a Shared VPC network that is hosted by another project, your project's Batch service agent (`service-PROJECT_NUMBER@gcp-sa-cloudbatch.iam.gserviceaccount.com`) must be granted permission to use that subnet--Compute Network User (`roles/compute.networkUser`).
+
+
+### 5. Setup IAM Permissions for the user
 
 In order to create Workflows jobs and Scheduler jobs, you need the following permission roles assigned to your user:
 
