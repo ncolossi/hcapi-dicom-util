@@ -1,52 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
-  labels:
-    app: dicom-adapter-import
   name: dicom-adapter-import
 spec:
-  progressDeadlineSeconds: 2147483647
   replicas: 1
-  revisionHistoryLimit: 2147483647
   selector:
     matchLabels:
       app: dicom-adapter-import
-  strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
-    type: RollingUpdate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: dicom-adapter-import
     spec:
       containers:
-      - args:
-        - --dimse_aet=IMPORTADAPTER
-        - --dimse_port=2575
-        - --dicomweb_address=https://healthcare.googleapis.com/v1/projects/PROJECT/locations/REGIONdatasets/DATASET/dicomStores/STORE/dicomWeb
-        image: gcr.io/cloud-healthcare-containers/healthcare-api-dicom-dicomweb-adapter-import:0.2.29
-        imagePullPolicy: IfNotPresent
-        name: dicom-import-adapter
-        ports:
-        - containerPort: 2575
-          name: port
-          protocol: TCP
-        env:
-        - name: ENV_AETS_JSON
-          valueFrom:
-            configMapKeyRef:
-              name: aet-dictionary
-              key: AETs.json
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      terminationGracePeriodSeconds: 30
-status: {}
+        - name: dicom-adapter-import
+          image: gcr.io/cloud-healthcare-containers/healthcare-api-dicom-dicomweb-adapter-import:0.2.43
+          ports:
+            - containerPort: 2575
+              protocol: TCP
+              name: "port"
+          args:
+            - "--dimse_aet=IMPORTADAPTER"
+            - "--dimse_port=2575"
+            - "--dicomweb_address=https://healthcare.googleapis.com/v1/projects/PROJECT_ID/locations/LOCATION/datasets/DATASET_ID/dicomStores/DICOM_STORE_ID/dicomWeb"
+          env:
+          - name: ENV_AETS_JSON
+            valueFrom:
+              configMapKeyRef:
+                name: aet-dictionary
+                key: AETs.json
