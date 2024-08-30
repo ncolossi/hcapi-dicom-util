@@ -17,7 +17,8 @@ This script performs the following steps:
 2. Validates the existence of the BigQuery dataset.
 3. Exports DICOM metadata to a BigQuery table with a temporary suffix.
 4. Copies the temporary table to a new table with partitioning.
-5. Configures streaming from the DICOM store to the partitioned table.
+5. Creates a summary materialized view on top of the metadata table.
+6. Configures streaming from the DICOM store to the partitioned table.
 
 Usage: python export_dicom_metadata_to_bq.py <dicom_store_path> <dataset_id>
 
@@ -52,13 +53,18 @@ def export_dicom_metadata_to_bq(dicom_store_path: str, dataset_id: str) -> None:
         dicom_store = dicom_client.projects().locations().datasets().dicomStores().get(name=dicom_store_path).execute()
         print(f"DICOM store validated: {dicom_store['name']}")
 
+        # Extract Healthcare API dataset and DICOM store names
+        healthcare_api_dataset = dicom_store_path.split('/')[5]
+        dicom_store_id = dicom_store_path.split("/")[-1]
+
+
         # 2. Validate BigQuery dataset
         print(f"Validating BigQuery dataset: {dataset_id}")
         bq_client.get_dataset(dataset_id)  # Raises NotFound if dataset doesn't exist
         print(f"BigQuery dataset validated: {dataset_id}")
 
+
         # 3. Export metadata to BigQuery temporary table
-        dicom_store_id = dicom_store_path.split("/")[-1]
         table_id_temp = f"{dicom_store_id}_temp".replace(".", "_")
         table_ref_temp = bq_client.dataset(dataset_id).table(table_id_temp)
         print(f"Exporting metadata to temporary table: {table_ref_temp}")
@@ -113,7 +119,68 @@ def export_dicom_metadata_to_bq(dicom_store_path: str, dataset_id: str) -> None:
         bq_client.delete_table(table_ref_temp)  
         print(f"Temporary table {table_ref_temp} deleted.")
 
-        # 5. Configure streaming
+
+        # 5. Create materialized view
+        view_id = f"{table_id}_summary"
+        view_ref = bq_client.dataset(dataset_id).table(view_id)
+
+        print(f"Creating materialized view: {view_ref}")
+
+        view_query = f"""
+        CREATE OR REPLACE MATERIALIZED VIEW
+          `{dataset_id}.{view_id}`
+        PARTITION BY
+          DATE_TRUNC(StudyDate, MONTH)
+          OPTIONS (enable_refresh = TRUE,
+            refresh_interval_minutes = 240,
+            max_staleness = INTERVAL "1" HOUR,
+            allow_non_incremental_definition = TRUE)
+        AS (
+          SELECT
+            '{healthcare_api_dataset}' AS HealthcareApiDataset,
+            '{dicom_store_id}' AS DicomStore,
+            StudyDate,
+            StudyInstanceUID,
+            AccessionNumber,
+            PatientID,
+            Modality,
+            StorageClass,
+            COUNT(*) AS ObjectCount,
+            SUM(BlobStorageSize) AS StudySizeBytes
+          FROM (
+            SELECT
+              ROW_NUMBER() OVER (PARTITION BY StudyInstanceUID, SOPInstanceUID, SeriesInstanceUID ORDER BY lastUpdated DESC) AS _row_id,
+              StudyDate,
+              StudyInstanceUID,
+              SeriesInstanceUID,
+              AccessionNumber,
+              PatientID,
+              Modality,
+              StorageClass,
+              BlobStorageSize,
+              Type
+            FROM
+              `{dataset_id}.{table_id}` ) AS r
+          WHERE
+            r._row_id=1
+            AND r.Type<>'DELETE'
+          GROUP BY
+            StudyDate,
+            StudyInstanceUID,
+            AccessionNumber,
+            PatientID,
+            Modality,
+            StorageClass
+        );
+        """
+
+        job_config = bigquery.QueryJobConfig()
+        query_job = bq_client.query(view_query, job_config=job_config)
+        query_job.result()  # Wait for the query to complete
+
+        print(f"Materialized view created: {view_ref}")
+
+        # 6. Configure streaming
         print(f"Configuring streaming to: {table_ref}")
 
         dicom_store['streamConfigs'] = [{
