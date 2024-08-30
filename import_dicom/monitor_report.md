@@ -101,6 +101,7 @@ Open the `workflows_monitor_report.yaml` file and replace the placeholders withi
 * `"your-dicom-store-path"`: The full path to your Healthcare API DICOM store (e.g., "projects/your-project/locations/your-region/datasets/your-dataset/dicomStores/your-dicom-store").
 * `"your-bigquery-table-id"`: The BigQuery table ID in the format "project.dataset.table".
 * `"ARCHIVE"`: Your desired storage class for imported DICOMs (or leave as "ARCHIVE" for the default).
+* `"your-vpc-project"`: Your Google Cloud project ID for the VPC network.
 * `"your-vpc"`: The name of your VPC network.
 * `"your-subnet-name"`: The name of the subnet within your VPC.
 * `"your-service-account-email"`: The email address of the service account you created for running the workflow.

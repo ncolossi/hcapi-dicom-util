@@ -9,6 +9,7 @@ main:
           - dicomStorePath: "your-dicom-store-path"
           - bigqueryTableId: "your-bigquery-table-id"
           - storageClass: "ARCHIVE"
+          - networkProjectId: "your-vpc-project"
           - networkName: "your-vpc"
           - subnetworkName: "your-subnet-name"
           - serviceAccount: "your-service-account-email"
@@ -43,8 +44,8 @@ main:
                     provisioningModel: STANDARD
                 network:
                   networkInterfaces:
-                  - network: ${"global/networks/" + networkName}
-                    subnetwork: ${"regions/" + region + "/subnetworks/" + subnetworkName}
+                  - network: ${"projects/" + networkProjectId + "/global/networks/" + networkName}
+                    subnetwork: ${"projects/" + networkProjectId + "/regions/" + region + "/subnetworks/" + subnetworkName}
                 serviceAccount:
                   email: ${serviceAccount}
               logsPolicy:
