@@ -146,7 +146,8 @@ def export_dicom_metadata_to_bq(dicom_store_path: str, dataset_id: str) -> None:
             Modality,
             StorageClass,
             COUNT(*) AS ObjectCount,
-            SUM(BlobStorageSize) AS StudySizeBytes
+            SUM(BlobStorageSize) AS StudySizeBytes,
+            MAX(LastUpdated) AS LastUpdated
           FROM (
             SELECT
               ROW_NUMBER() OVER (PARTITION BY StudyInstanceUID, SOPInstanceUID, SeriesInstanceUID ORDER BY lastUpdated DESC) AS _row_id,
@@ -158,7 +159,8 @@ def export_dicom_metadata_to_bq(dicom_store_path: str, dataset_id: str) -> None:
               Modality,
               StorageClass,
               BlobStorageSize,
-              Type
+              Type,
+              LastUpdated
             FROM
               `{dataset_id}.{table_id}` ) AS r
           WHERE
