@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 
 INCLUDE_ZIP_NAME = True  # Add the file name (without .zip) as a folder to the unzipped files
-NUM_THREADS = 12         # Define the number of threads
+NUM_THREADS = 10         # Define the number of threads
 
 def unzip_and_upload_single(blob, bucket, debug_logs=False):
     """Unzips a single zip file, uploads contents, and deletes the original.
