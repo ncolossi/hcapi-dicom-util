@@ -68,7 +68,7 @@ def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquer
 
         # 1. Unzip DICOM batch
         print(f"Unzipping DICOM batch from: {dicom_gcs_uri}")
-        if not unzip_and_upload(bucket, f"{path}/DICOM/{date_str}"):
+        if not unzip_and_upload(bucket, f"{path}/DICOM/{date_str}", debug_logs=False):
             raise ValueError("DICOM batch unzipping did not complete successfully. Cannot continue to import.")
 
         # 2. Import DICOM batch
@@ -76,10 +76,24 @@ def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquer
         if not import_dicom(dicom_gcs_uri, dicom_store_path, storage_class):
             print("DICOM batch importing did not complete successfully. Proceeding to validation...")
 
-        # 3. Validate DICOM batch
-        print(f"Validating DICOM batch against: {report_csv_gcs_uri}")
-        if not validate_dicom_batch(report_csv_gcs_uri, bigquery_table_id):
-            raise ValueError("DICOM batch validation did not pass. Check logs for details.")
+        # 3. Validate DICOM batch (with retry)
+        print(f"Waiting 30 seconds for metadata sync before validation...")
+        time.sleep(30)  # Wait for 30 seconds
+
+        validation_attempts = 0
+        max_attempts = 2  # One initial attempt + one retry
+        while validation_attempts < max_attempts:
+            print(f"Validating DICOM batch against: {report_csv_gcs_uri} (Attempt {validation_attempts + 1})")
+            if validate_dicom_batch(report_csv_gcs_uri, bigquery_table_id):
+                print("DICOM batch validation passed.")
+                break  # Validation successful, exit the loop
+            else:
+                validation_attempts += 1
+                if validation_attempts < max_attempts:
+                    print(f"DICOM batch validation failed. Retrying in 120 seconds...")
+                    time.sleep(120)  # Wait for 2 minutes before retrying
+                else:
+                    raise ValueError("DICOM batch validation did not pass after retry. Check logs for details.")
 
         end_time = time.time()
         elapsed_time = round(end_time - start_time, 2)
