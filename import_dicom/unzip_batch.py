@@ -26,7 +26,7 @@ import time
 INCLUDE_ZIP_NAME = True  # Add the file name (without .zip) as a folder to the unzipped files
 NUM_THREADS = 12         # Define the number of threads
 
-def unzip_and_upload_single(blob, bucket):
+def unzip_and_upload_single(blob, bucket, debug_logs=False):
     """Unzips a single zip file, uploads contents, and deletes the original.
 
     Args:
@@ -36,7 +36,8 @@ def unzip_and_upload_single(blob, bucket):
     try:
         start_time = time.time()  # Start the timer
         file_name_uri = f"gs://{bucket.name}/{blob.name}"
-        print(f"Unzipping: {file_name_uri}")
+        if debug_logs:
+            print(f"Unzipping: {file_name_uri}")
         file_name = blob.name
         zip_bytes = blob.download_as_bytes()
 
@@ -59,9 +60,10 @@ def unzip_and_upload_single(blob, bucket):
 
         # Delete the original .zip file
         blob.delete()
-        end_time = time.time()  # Stop the timer
-        elapsed_time = round(end_time - start_time, 2)  # Calculate elapsed time in seconds
-        print(f"Unzipped and uploaded: {file_name_uri} in {elapsed_time} seconds")
+        if debug_logs:
+            end_time = time.time()  # Stop the timer
+            elapsed_time = round(end_time - start_time, 2)  # Calculate elapsed time in seconds
+            print(f"Unzipped and uploaded: {file_name_uri} in {elapsed_time} seconds")
 
     except zipfile.BadZipFile:
         print(f"Error: {file_name_uri} is not a valid zip file.")
@@ -73,7 +75,7 @@ def unzip_and_upload_single(blob, bucket):
 
     return True
 
-def unzip_and_upload(bucket_name, prefix):
+def unzip_and_upload(bucket_name, prefix, debug_logs=False):
     """Unzips zip files in a GCS bucket in parallel.
 
     Args:
@@ -85,7 +87,8 @@ def unzip_and_upload(bucket_name, prefix):
         storage_client = storage.Client()
         bucket = storage_client.bucket(bucket_name)
 
-        print(f"Seeking zip files...")
+        if debug_logs:
+            print(f"Seeking zip files...")
         blobs = storage_client.list_blobs(bucket_name, prefix=prefix)
         zip_blobs = [blob for blob in blobs if blob.name.endswith(".zip")]
         print(f"Found {len(zip_blobs)} zip files.")
@@ -95,7 +98,7 @@ def unzip_and_upload(bucket_name, prefix):
 
         with ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
             # Submit each zip file to the thread pool
-            results = list(executor.map(unzip_and_upload_single, zip_blobs, [bucket]*len(zip_blobs)))
+            results = list(executor.map(unzip_and_upload_single, zip_blobs, [bucket]*len(zip_blobs), [debug_logs]*len(zip_blobs)))
 
         # Report elapsed time
         end_time = time.time()  # Stop the timer
@@ -127,4 +130,4 @@ if __name__ == "__main__":
     bucket_name = parts[0]
     prefix = parts[1] if len(parts) > 1 else ""
 
-    unzip_and_upload(bucket_name, prefix)
+    unzip_and_upload(bucket_name, prefix, debug_logs=True)
