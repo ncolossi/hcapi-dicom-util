@@ -22,58 +22,74 @@ from io import BytesIO
 import os.path
 from concurrent.futures import ThreadPoolExecutor
 import time
+import random
 
 INCLUDE_ZIP_NAME = True  # Add the file name (without .zip) as a folder to the unzipped files
 NUM_THREADS = 10         # Define the number of threads
 
-def unzip_and_upload_single(blob, bucket, debug_logs=False):
+def unzip_and_upload_single(blob, bucket, debug_logs=False, retries=3, backoff_factor=2):
     """Unzips a single zip file, uploads contents, and deletes the original.
 
     Args:
         blob: The GCS blob object representing the zip file.
         bucket: The GCS bucket object.
+        debug_logs (bool): Whether to print debug logs.
+        retries (int): The maximum number of retries.
+        backoff_factor (int): The factor to increase the backoff time between retries.
     """
-    try:
-        start_time = time.time()  # Start the timer
-        file_name_uri = f"gs://{bucket.name}/{blob.name}"
-        if debug_logs:
-            print(f"Unzipping: {file_name_uri}")
-        file_name = blob.name
-        zip_bytes = blob.download_as_bytes()
 
-        # Extract the zip file in memory
-        with zipfile.ZipFile(BytesIO(zip_bytes)) as zip_file:
-            for file_info in zip_file.infolist():
-                if not file_info.is_dir():
-                    # Get the file name and contents
-                    if INCLUDE_ZIP_NAME:
-                        # Use file_name (without .zip) as path
-                        extracted_file_name = f"{file_name[:-4]}/{file_info.filename}"
-                    else:
-                        # Use only dirname from file_name as path
-                        extracted_file_name = f"{os.path.dirname(file_name)}/{file_info.filename}"
-                    extracted_file_content = zip_file.read(file_info)
+    attempts = 0
+    while attempts <= retries:
+        try:
+            start_time = time.time()  # Start the timer
+            file_name_uri = f"gs://{bucket.name}/{blob.name}"
+            if debug_logs:
+                print(f"Unzipping: {file_name_uri}")
+            file_name = blob.name
+            zip_bytes = blob.download_as_bytes()
 
-                    # Upload the extracted file back to GCS
-                    extracted_blob = bucket.blob(extracted_file_name)
-                    extracted_blob.upload_from_string(extracted_file_content)
+            # Extract the zip file in memory
+            with zipfile.ZipFile(BytesIO(zip_bytes)) as zip_file:
+                for file_info in zip_file.infolist():
+                    if not file_info.is_dir():
+                        # Get the file name and contents
+                        if INCLUDE_ZIP_NAME:
+                            # Use file_name (without .zip) as path
+                            extracted_file_name = f"{file_name[:-4]}/{file_info.filename}"
+                        else:
+                            # Use only dirname from file_name as path
+                            extracted_file_name = f"{os.path.dirname(file_name)}/{file_info.filename}"
+                        extracted_file_content = zip_file.read(file_info)
 
-        # Delete the original .zip file
-        blob.delete()
-        if debug_logs:
-            end_time = time.time()  # Stop the timer
-            elapsed_time = round(end_time - start_time, 2)  # Calculate elapsed time in seconds
-            print(f"Unzipped and uploaded: {file_name_uri} in {elapsed_time} seconds")
+                        # Upload the extracted file back to GCS
+                        extracted_blob = bucket.blob(extracted_file_name)
+                        extracted_blob.upload_from_string(extracted_file_content)
 
-    except zipfile.BadZipFile:
-        print(f"Error: {file_name_uri} is not a valid zip file.")
-        return False
+            # Delete the original .zip file
+            blob.delete()
+            if debug_logs:
+                end_time = time.time()  # Stop the timer
+                elapsed_time = round(end_time - start_time, 2)  # Calculate elapsed time in seconds
+                print(f"Unzipped and uploaded: {file_name_uri} in {elapsed_time} seconds")
 
-    except Exception as e: 
-        print(f"Error processing {file_name_uri}: {e}")
-        return False
+            return True  # Success
 
-    return True
+        except zipfile.BadZipFile:
+            print(f"Error: {file_name_uri} is not a valid zip file.")
+            return False  # Not a retryable error
+
+        except Exception as e:
+            attempts += 1
+            if attempts <= retries:
+                wait_time = backoff_factor ** (attempts - 1) + random.uniform(0, 1)  # Exponential backoff with jitter
+                print(f"Error processing {file_name_uri}: {e}. Retrying in {wait_time:.2f} seconds...")
+                time.sleep(wait_time)
+            else:
+                print(f"Error processing {file_name_uri}: {e}. Max retries exceeded.")
+                return False  # Max retries exceeded
+
+    return False  # Should not reach here, but added for clarity
+
 
 def unzip_and_upload(bucket_name, prefix, debug_logs=False):
     """Unzips zip files in a GCS bucket in parallel.
