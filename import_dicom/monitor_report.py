@@ -81,7 +81,8 @@ def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquer
         time.sleep(30)  # Wait for 30 seconds
 
         validation_attempts = 0
-        max_attempts = 2  # One initial attempt + one retry
+        max_attempts = 3  # One initial attempt + two retry
+        sleep_time = 0
         while validation_attempts < max_attempts:
             print(f"Validating DICOM batch against: {report_csv_gcs_uri} (Attempt {validation_attempts + 1})")
             if validate_dicom_batch(report_csv_gcs_uri, bigquery_table_id):
@@ -90,8 +91,9 @@ def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquer
             else:
                 validation_attempts += 1
                 if validation_attempts < max_attempts:
-                    print(f"DICOM batch validation failed. Retrying in 120 seconds...")
-                    time.sleep(120)  # Wait for 2 minutes before retrying
+                    sleep_time += 120  # Wait for 2 more minutes before retrying
+                    print(f"DICOM batch validation failed. Retrying in {sleep_time} seconds...")
+                    time.sleep(sleep_time) 
                 else:
                     raise ValueError("DICOM batch validation did not pass after retry. Check logs for details.")
 
