@@ -49,7 +49,7 @@ def import_dicom(gcs_folder, dicom_store_path, storage_class="ARCHIVE"):
     }
 
     # Create a Healthcare API client
-    healthcare = discovery.build('healthcare', 'v1beta1')
+    healthcare = discovery.build('healthcare', 'v1')
 
     try:
         start_time = time.time()  # Start the timer
