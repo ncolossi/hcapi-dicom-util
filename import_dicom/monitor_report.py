@@ -81,7 +81,7 @@ def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquer
         time.sleep(30)  # Wait for 30 seconds
 
         validation_attempts = 0
-        max_attempts = 3  # One initial attempt + two retry
+        max_attempts = 5  # One initial attempt + two retry
         sleep_time = 0
         while validation_attempts < max_attempts:
             print(f"Validating DICOM batch against: {report_csv_gcs_uri} (Attempt {validation_attempts + 1})")
