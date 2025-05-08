@@ -22,6 +22,7 @@ Required environment variables:
 - DICOM_STORE_PATH: Path to the Healthcare API DICOM store.
 - BIGQUERY_TABLE_ID: BigQuery table ID in 'project.dataset.table' format.
 - STORAGE_CLASS: (Optional) Storage class for imported DICOMs (defaults to ARCHIVE).
+- SKIP_VALIDATION: (Optional) If set to 'true', skips the validation step (defaults to 'false').
 """
 
 import os
@@ -34,7 +35,7 @@ from import_dicom_batch import import_dicom
 from validate_dicom_batch import validate_dicom_batch
 
 
-def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquery_table_id: str, storage_class: str) -> bool:
+def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquery_table_id: str, storage_class: str, skip_validation: bool = False) -> bool:
     """Executes the DICOM batch processing and validation pipeline for a single report.
 
     Args:
@@ -42,6 +43,7 @@ def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquer
         dicom_store_path: Path to the Healthcare API DICOM store.
         bigquery_table_id: BigQuery table ID in 'project.dataset.table' format.
         storage_class: Storage class for imported DICOMs.
+        skip_validation: If True, skips the validation step.
 
     Returns:
         bool: True if the processing and validation were successful, False otherwise.
@@ -76,26 +78,29 @@ def run_batch_for_report(report_csv_gcs_uri: str, dicom_store_path: str, bigquer
         if not import_dicom(dicom_gcs_uri, dicom_store_path, storage_class):
             print("DICOM batch importing did not complete successfully. Proceeding to validation...")
 
-        # 3. Validate DICOM batch (with retry)
-        print(f"Waiting 30 seconds for metadata sync before validation...")
-        time.sleep(30)  # Wait for 30 seconds
+        # 3. Validate DICOM batch (with retry) if not skipped
+        if skip_validation:
+            print("Skipping validation as requested by SKIP_VALIDATION flag.")
+        else:
+            print(f"Waiting 30 seconds for metadata sync before validation...")
+            time.sleep(30)  # Wait for 30 seconds
 
-        validation_attempts = 0
-        max_attempts = 5  # One initial attempt + two retry
-        sleep_time = 0
-        while validation_attempts < max_attempts:
-            print(f"Validating DICOM batch against: {report_csv_gcs_uri} (Attempt {validation_attempts + 1})")
-            if validate_dicom_batch(report_csv_gcs_uri, bigquery_table_id):
-                print("DICOM batch validation passed.")
-                break  # Validation successful, exit the loop
-            else:
-                validation_attempts += 1
-                if validation_attempts < max_attempts:
-                    sleep_time += 120  # Wait for 2 more minutes before retrying
-                    print(f"DICOM batch validation failed. Retrying in {sleep_time} seconds...")
-                    time.sleep(sleep_time) 
+            validation_attempts = 0
+            max_attempts = 5  # One initial attempt + four retries
+            sleep_time = 0
+            while validation_attempts < max_attempts:
+                print(f"Validating DICOM batch against: {report_csv_gcs_uri} (Attempt {validation_attempts + 1})")
+                if validate_dicom_batch(report_csv_gcs_uri, bigquery_table_id):
+                    print("DICOM batch validation passed.")
+                    break  # Validation successful, exit the loop
                 else:
-                    raise ValueError("DICOM batch validation did not pass after retry. Check logs for details.")
+                    validation_attempts += 1
+                    if validation_attempts < max_attempts:
+                        sleep_time += 120  # Wait for 2 more minutes before retrying
+                        print(f"DICOM batch validation failed. Retrying in {sleep_time} seconds...")
+                        time.sleep(sleep_time) 
+                    else:
+                        raise ValueError("DICOM batch validation did not pass after retry. Check logs for details.")
 
         end_time = time.time()
         elapsed_time = round(end_time - start_time, 2)
@@ -126,8 +131,9 @@ def monitor_report() -> bool:
         dicom_store_path = os.environ["DICOM_STORE_PATH"]
         bigquery_table_id = os.environ["BIGQUERY_TABLE_ID"]
 
-        # Read optional STORAGE_CLASS, defaulting to ARCHIVE
+        # Read optional environment variables
         storage_class = os.getenv("STORAGE_CLASS", "ARCHIVE")
+        skip_validation = os.getenv("SKIP_VALIDATION", "false").lower() == "true"
 
         # Remove trailing slash from REPORT_GCS_URI if present
         report_gcs_uri = report_gcs_uri.rstrip("/")
@@ -196,7 +202,7 @@ def monitor_report() -> bool:
 
                 # Invoke run_batch_for_report with the necessary parameters
                 report_gcs_uri = f"gs://{bucket_name}/{prefix}/{report_name}"
-                if not run_batch_for_report(report_gcs_uri, dicom_store_path, bigquery_table_id, storage_class):
+                if not run_batch_for_report(report_gcs_uri, dicom_store_path, bigquery_table_id, storage_class, skip_validation):
                     print(f"Error processing report: {report_name}")
                     continue
 

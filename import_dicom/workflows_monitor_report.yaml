@@ -9,6 +9,7 @@ main:
           - dicomStorePath: "your-dicom-store-path"
           - bigqueryTableId: "your-bigquery-table-id"
           - storageClass: "ARCHIVE"
+          - skipValidation: "false"
           - networkProjectId: "your-vpc-project"
           - networkName: "your-vpc"
           - subnetworkName: "your-subnet-name"
@@ -32,6 +33,7 @@ main:
                         DICOM_STORE_PATH: ${dicomStorePath}
                         BIGQUERY_TABLE_ID: ${bigqueryTableId}
                         STORAGE_CLASS: ${storageClass}
+                        SKIP_VALIDATION: ${skipValidation}
                     computeResource:
                       cpuMilli: 2000
                       memoryMib: 8000
