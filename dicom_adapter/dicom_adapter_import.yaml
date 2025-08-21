@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: dicom-adapter-import
-          image: gcr.io/cloud-healthcare-containers/healthcare-api-dicom-dicomweb-adapter-import:0.2.43
+          image: gcr.io/cloud-healthcare-containers/healthcare-api-dicom-dicomweb-adapter-import:0.2.47
           ports:
             - containerPort: 2575
               protocol: TCP
@@ -23,6 +23,11 @@ spec:
             - "--dimse_aet=IMPORTADAPTER"
             - "--dimse_port=2575"
             - "--dicomweb_address=https://healthcare.googleapis.com/v1/projects/PROJECT_ID/locations/LOCATION/datasets/DATASET_ID/dicomStores/DICOM_STORE_ID/dicomWeb"
+            - "--auto_ack_cstore"
+            - "--persistent_file_storage_location=/tmp/backupfile"
+            - "--persistent_file_upload_retry_amount=5"
+            - "--min_upload_delay=100"
+            - "--http_error_codes_to_retry=0,409,429,503"
           env:
           - name: ENV_AETS_JSON
             valueFrom:
